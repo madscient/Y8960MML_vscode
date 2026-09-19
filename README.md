@@ -10,14 +10,26 @@ Y8960 カートリッジの MML（`.mml`）を書くための VS Code 拡張。
 
 ## 用意するもの
 
-| | |
+| | 入手先 |
 |---|---|
-| `y8mmlc` | MML コンパイラ（Y8960MMLCompiler） |
-| `y8960player` | プレイヤー（Y8960Sequencer）。エミュレータの DLL 3本を同じフォルダに置く |
+| `y8mmlc`（MML コンパイラ） | [Y8960MMLCompiler のリリース](https://github.com/madscient/Y8960MMLCompiler/releases) |
+| `y8960player`（プレイヤー） | [Y8960Sequencer のリリース](https://github.com/madscient/Y8960Sequencer/releases) |
+
+Windows 版はどちらも zip で配られている。展開したフォルダの中身はそのまま使う。
+`y8960player` は、同じフォルダにあるエミュレータの DLL 3本と一緒に動く。
 
 PATH の通ったところに置くか、設定でパスを指定する。設定に相対パスを書くと、
 ワークスペースのフォルダから数える。見つからないときに出る
 エラーの「設定を開く」から、その設定へ行ける。
+
+## MML の書き方
+
+- [MML ソースファイルの書き方](https://github.com/madscient/Y8960MMLCompiler/blob/master/doc/mml-source.md)
+  ―― トラック行、`#assign` などのメタコマンド
+- [MML のコマンド](https://github.com/madscient/Y8960MMLCompiler/blob/master/doc/mml-reference.md)
+
+コンパイラの zip には、例（`examples/demo.mml`）と ADPCM のサンプル
+（`presets/`）も入っている。
 
 ## 使い方
 
