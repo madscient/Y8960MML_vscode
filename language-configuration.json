@@ -1,0 +1,19 @@
+{
+  "comments": {
+    "lineComment": ";"
+  },
+  "//": "( ) は (DC) (*) のような記号の一部なので括弧として扱わない",
+  "brackets": [
+    ["[", "]"],
+    ["{", "}"]
+  ],
+  "autoClosingPairs": [
+    { "open": "\"", "close": "\"", "notIn": ["string", "comment"] }
+  ],
+  "surroundingPairs": [
+    ["[", "]"],
+    ["{", "}"],
+    ["\"", "\""]
+  ],
+  "wordPattern": "[A-Za-z_#@$][A-Za-z0-9_]*"
+}

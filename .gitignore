@@ -1,0 +1,6 @@
+node_modules/
+out/
+*.vsix
+# copied from the compiler's repository at build time (scripts/copy-grammar.mjs)
+syntaxes/
+.vscode-test/

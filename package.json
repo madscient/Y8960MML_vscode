@@ -1,0 +1,137 @@
+{
+  "name": "y8960mml-helper",
+  "displayName": "Y8960 MML Helper",
+  "description": "Y8960 カートリッジの MML を書くための拡張。y8mmlc でコンパイルし、y8960player で鳴らす",
+  "version": "0.0.1",
+  "publisher": "madscient",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:mml"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "y8960mml",
+        "aliases": [
+          "Y8960 MML",
+          "y8960mml"
+        ],
+        "extensions": [
+          ".mml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "y8960mml",
+        "scopeName": "source.y8960mml",
+        "path": "./syntaxes/y8960mml.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "y8960mml.compile",
+        "title": "コンパイル",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.play",
+        "title": "コンパイルして再生",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.stop",
+        "title": "再生を止める",
+        "category": "Y8960 MML"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "y8960mml.compile",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.play",
+          "when": "editorLangId == y8960mml"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Y8960 MML Helper",
+      "properties": {
+        "y8960mml.compilerPath": {
+          "type": "string",
+          "default": "y8mmlc",
+          "markdownDescription": "`y8mmlc` の実行ファイル。PATH 上にあれば名前だけでよい。"
+        },
+        "y8960mml.playerPath": {
+          "type": "string",
+          "default": "y8960player",
+          "markdownDescription": "`y8960player` の実行ファイル。PATH 上にあれば名前だけでよい。エミュレータの DLL 3本が同じフォルダに要る。"
+        },
+        "y8960mml.compileOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "保存するたびにコンパイルする。"
+        },
+        "y8960mml.outDir": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "`.SQ` と `.PC` を書き出すフォルダ。空ならソースと同じフォルダ。相対パスはソースのフォルダから数える。"
+        },
+        "y8960mml.playerTick": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "enum": [
+            null,
+            0,
+            1,
+            2
+          ],
+          "enumDescriptions": [
+            "y8960player の既定に任せる",
+            "約 60Hz",
+            "約 100Hz",
+            "約 200Hz"
+          ],
+          "default": null,
+          "markdownDescription": "演奏を進める割り込みの周期（`y8960player --tick`）。"
+        },
+        "y8960mml.detectFromContent": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "他の拡張が `.mml` を別の言語として開いたとき、`#assign` の行があれば Y8960 MML に切り替える。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "grammar": "node scripts/copy-grammar.mjs",
+    "compile": "npm run grammar && tsc -p ./",
+    "watch": "tsc -p ./ -w",
+    "pretest": "npm run compile",
+    "test": "node --test \"out/test/*.test.js\"",
+    "e2e": "npm run compile && node scripts/run-e2e.mjs",
+    "package": "npm run compile && vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "~1.85.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.5.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.0.0"
+  }
+}
