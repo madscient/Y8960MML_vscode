@@ -5,6 +5,10 @@
   "version": "0.0.1",
   "publisher": "madscient",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/madscient/Y8960MML_vscode.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
