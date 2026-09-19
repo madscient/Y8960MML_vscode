@@ -137,12 +137,22 @@ async function playCommand(): Promise<void> {
     playingItem.show();
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-      void vscode.window.showErrorMessage(
-        `y8960player が見つかりません（${playerPath}）。設定 y8960mml.playerPath を確認してください。`,
-      );
+      void notFound("y8960player", playerPath, "y8960mml.playerPath");
     } else {
       void vscode.window.showErrorMessage(`y8960player を起動できません: ${String(e)}`);
     }
+  }
+}
+
+const OPEN_SETTING = "設定を開く";
+
+async function notFound(tool: string, configured: string, setting: string): Promise<void> {
+  const choice = await vscode.window.showErrorMessage(
+    `${tool} が見つかりません（${configured}）。設定 ${setting} に実行ファイルのパスを入れてください。`,
+    OPEN_SETTING,
+  );
+  if (choice === OPEN_SETTING) {
+    await vscode.commands.executeCommand("workbench.action.openSettings", setting);
   }
 }
 
@@ -165,9 +175,7 @@ async function compileDocument(doc: vscode.TextDocument): Promise<string[] | und
     return undefined;
   }
   if (result.kind === "notFound") {
-    void vscode.window.showErrorMessage(
-      `y8mmlc が見つかりません（${compilerPath}）。設定 y8960mml.compilerPath を確認してください。`,
-    );
+    void notFound("y8mmlc", compilerPath, "y8960mml.compilerPath");
     return undefined;
   }
 
