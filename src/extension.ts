@@ -117,7 +117,7 @@ async function playCommand(): Promise<void> {
   }
   const adpcm = written.find((f) => /\.pc$/i.test(f));
   const tick = config().get<number | null>("playerTick", null);
-  const playerPath = config().get<string>("playerPath", "y8960player");
+  const playerPath = toolPath("playerPath", "y8960player", doc);
 
   output.appendLine(`> ${playerPath} ${path.basename(sequence)}${adpcm ? ` --adpcm ${path.basename(adpcm)}` : ""}`);
   try {
@@ -144,6 +144,21 @@ async function playCommand(): Promise<void> {
   }
 }
 
+/**
+ * A bare name is left for the PATH search. A relative path is taken from the
+ * workspace folder: the tools run with the source's folder as their working
+ * directory, which would otherwise make the same setting point somewhere
+ * different for every source.
+ */
+function toolPath(key: string, fallback: string, doc: vscode.TextDocument): string {
+  const raw = config().get<string>(key, fallback).trim() || fallback;
+  if (path.isAbsolute(raw) || !/[\\/]/.test(raw)) {
+    return raw;
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(doc.uri) ?? vscode.workspace.workspaceFolders?.[0];
+  return folder === undefined ? path.resolve(path.dirname(doc.uri.fsPath), raw) : path.resolve(folder.uri.fsPath, raw);
+}
+
 const OPEN_SETTING = "設定を開く";
 
 async function notFound(tool: string, configured: string, setting: string): Promise<void> {
@@ -164,7 +179,7 @@ function outDirFor(source: string): string {
 /** Returns the files written, or undefined when nothing was. */
 async function compileDocument(doc: vscode.TextDocument): Promise<string[] | undefined> {
   const source = doc.uri.fsPath;
-  const compilerPath = config().get<string>("compilerPath", "y8mmlc");
+  const compilerPath = toolPath("compilerPath", "y8mmlc", doc);
   output.appendLine(`> ${compilerPath} ${path.basename(source)}`);
 
   let result;

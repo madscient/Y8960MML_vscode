@@ -78,6 +78,29 @@ async function compileOnSave(dir: string): Promise<void> {
   }
 }
 
+async function relativeCompilerPath(dir: string): Promise<void> {
+  const ws = vscode.workspace.workspaceFolders?.[0];
+  assert.ok(ws, "run-e2e opens a workspace folder");
+  const rel = path.relative(ws.uri.fsPath, process.env.Y8MMLC!);
+  assert.ok(!path.isAbsolute(rel), "the compiler and the workspace are on one drive");
+  // The source sits outside the workspace and deeper than it, so a path taken
+  // from the source's folder would miss the compiler.
+  dir = path.join(dir, "a", "b");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "rel.mml");
+  fs.writeFileSync(file, "#assign A SSGS 0\nA cdef\n");
+  await open(file);
+  const cfg = vscode.workspace.getConfiguration("y8960mml");
+  const before = cfg.inspect<string>("compilerPath")?.globalValue;
+  await cfg.update("compilerPath", rel, vscode.ConfigurationTarget.Global);
+  try {
+    await vscode.commands.executeCommand("y8960mml.compile");
+    assert.ok(fs.existsSync(path.join(dir, "REL.SQ")));
+  } finally {
+    await cfg.update("compilerPath", before, vscode.ConfigurationTarget.Global);
+  }
+}
+
 async function playAndStop(dir: string): Promise<void> {
   const file = path.join(dir, "play.mml");
   fs.writeFileSync(file, "#assign A SSGS 0\nA T60 L1 cdefgab\n");
@@ -98,6 +121,7 @@ export async function run(): Promise<void> {
     ["language and compile", languageAndCompile],
     ["fixing clears the diagnostics", fixClearsDiagnostics],
     ["compile on save", compileOnSave],
+    ["a relative compiler path is taken from the workspace", relativeCompilerPath],
   ];
   if (process.env.Y8960MML_E2E_PLAY === "1") {
     cases.push(["play and stop", playAndStop]);

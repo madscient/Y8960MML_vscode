@@ -19,7 +19,8 @@ if (!process.env.Y8MMLC) {
 // Node, which then rejects the options below.
 delete process.env.ELECTRON_RUN_AS_NODE;
 
-const userData =mkdtempSync(join(tmpdir(), "y8960mml-e2e-user-"));
+const userData = mkdtempSync(join(tmpdir(), "y8960mml-e2e-user-"));
+const workspace = mkdtempSync(join(tmpdir(), "y8960mml-e2e-ws-"));
 mkdirSync(join(userData, "User"), { recursive: true });
 const settings = { "y8960mml.compilerPath": process.env.Y8MMLC };
 if (process.env.Y8960PLAYER) settings["y8960mml.playerPath"] = process.env.Y8960PLAYER;
@@ -30,7 +31,7 @@ try {
     ...(process.env.VSCODE_EXE ? { vscodeExecutablePath: process.env.VSCODE_EXE } : {}),
     extensionDevelopmentPath: root,
     extensionTestsPath: join(root, "out", "e2e", "suite.js"),
-    launchArgs: ["--user-data-dir", userData, "--disable-extensions", "--skip-welcome", "--skip-release-notes"],
+    launchArgs: [workspace, "--user-data-dir", userData, "--disable-extensions", "--skip-welcome", "--skip-release-notes"],
   });
 } catch (e) {
   console.error(e);

@@ -71,12 +71,12 @@
         "y8960mml.compilerPath": {
           "type": "string",
           "default": "y8mmlc",
-          "markdownDescription": "`y8mmlc` の実行ファイル。PATH 上にあれば名前だけでよい。"
+          "markdownDescription": "`y8mmlc` の実行ファイル。PATH 上にあれば名前だけでよい。相対パスはワークスペースのフォルダから数える。"
         },
         "y8960mml.playerPath": {
           "type": "string",
           "default": "y8960player",
-          "markdownDescription": "`y8960player` の実行ファイル。PATH 上にあれば名前だけでよい。エミュレータの DLL 3本が同じフォルダに要る。"
+          "markdownDescription": "`y8960player` の実行ファイル。PATH 上にあれば名前だけでよい。相対パスはワークスペースのフォルダから数える。エミュレータの DLL 3本が同じフォルダに要る。"
         },
         "y8960mml.compileOnSave": {
           "type": "boolean",
