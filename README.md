@@ -8,6 +8,12 @@ Y8960 カートリッジの MML（`.mml`）を書くための VS Code 拡張。
 
 コンパイラとプレイヤーは同梱していない。別に用意する。
 
+## インストール
+
+[リリース](https://github.com/madscient/Y8960MML_vscode/releases)から `.vsix` を
+落とし、VS Code の拡張機能ビューの「…」メニューから「VSIX からのインストール...」を
+選ぶ。コマンドラインなら `code --install-extension y8960mml-helper-<版>.vsix`。
+
 ## 用意するもの
 
 | | 入手先 |
