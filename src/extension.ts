@@ -2,9 +2,9 @@ import * as path from "node:path";
 
 import * as vscode from "vscode";
 
-import { looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
+import { assignedTracks, looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
 import { compile } from "./compile.js";
-import { Player } from "./player.js";
+import { Player, playerArgs } from "./player.js";
 
 const LANGUAGE_ID = "y8960mml";
 
@@ -31,6 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose: () => player.stop() },
     vscode.commands.registerCommand("y8960mml.compile", () => compileCommand()),
     vscode.commands.registerCommand("y8960mml.play", () => playCommand()),
+    vscode.commands.registerCommand("y8960mml.playParts", () => playPartsCommand()),
     vscode.commands.registerCommand("y8960mml.stop", () => player.stop()),
     vscode.workspace.onDidSaveTextDocument((doc) => onSave(doc)),
     vscode.workspace.onDidOpenTextDocument((doc) => detectLanguage(doc)),
@@ -103,9 +104,45 @@ async function compileCommand(): Promise<void> {
 
 async function playCommand(): Promise<void> {
   const doc = await activeSource();
+  if (doc !== undefined) {
+    await play(doc, config().get<string[]>("playerMute", []));
+  }
+}
+
+/** The tracks picked last time, per document, to start the next pick from. */
+const lastParts = new Map<string, Set<string>>();
+
+async function playPartsCommand(): Promise<void> {
+  const doc = await activeSource();
   if (doc === undefined) {
     return;
   }
+  const tracks = assignedTracks(doc.getText());
+  if (tracks.length === 0) {
+    void vscode.window.showErrorMessage("#assign のあるトラックがありません。");
+    return;
+  }
+  const key = doc.uri.toString();
+  const last = lastParts.get(key);
+  const picked = await vscode.window.showQuickPick(
+    tracks.map((t) => ({
+      label: t.track,
+      description: `${t.device} ${t.channel}`,
+      picked: last === undefined || last.has(t.track),
+    })),
+    { canPickMany: true, title: "鳴らすトラック", placeHolder: "鳴らすトラックを選ぶ" },
+  );
+  if (picked === undefined || picked.length === 0) {
+    return;
+  }
+  lastParts.set(key, new Set(picked.map((p) => p.label)));
+  // "!X" silences everything but X; several of them leave their union playing.
+  // The playerMute setting is left out: its own "!" specs would narrow this.
+  const mutes = picked.length === tracks.length ? [] : picked.map((p) => `!${p.label}`);
+  await play(doc, mutes);
+}
+
+async function play(doc: vscode.TextDocument, mutes: readonly string[]): Promise<void> {
   const written = await compileDocument(doc);
   if (written === undefined) {
     return;
@@ -117,12 +154,14 @@ async function playCommand(): Promise<void> {
   }
   const adpcm = written.find((f) => /\.pc$/i.test(f));
   const tick = config().get<number | null>("playerTick", null);
+  const repeat = config().get<number | null>("playerRepeat", null);
   const playerPath = toolPath("playerPath", "y8960player", doc);
+  const request = { playerPath, sequence, adpcm, tick: tick ?? undefined, repeat: repeat ?? undefined, mutes };
 
-  output.appendLine(`> ${playerPath} ${path.basename(sequence)}${adpcm ? ` --adpcm ${path.basename(adpcm)}` : ""}`);
+  output.appendLine(`> ${playerPath} ${playerArgs(request).join(" ")}`);
   try {
     await player.start(
-      { playerPath, sequence, adpcm, tick: tick ?? undefined },
+      request,
       (end) => {
         playingItem.hide();
         if (end.stderr.length > 0) {

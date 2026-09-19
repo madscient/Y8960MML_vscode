@@ -73,6 +73,26 @@ export function utf8ColumnToUtf16(lineText: string, column: number): number {
   return offset;
 }
 
+export interface TrackAssign {
+  track: string;
+  device: string;
+  channel: string;
+}
+
+/**
+ * The tracks the source's #assign lines name, in track order. Values are taken
+ * as written; the compiler is what checks them.
+ */
+export function assignedTracks(text: string): TrackAssign[] {
+  // A trailing backslash joins the next line before the line kind is decided.
+  const joined = text.replace(/\\[ \t]*\r?\n/g, "");
+  const found = new Map<string, TrackAssign>();
+  for (const m of joined.matchAll(/^#[Aa][Ss][Ss][Ii][Gg][Nn][ \t]+([A-P])[ \t]+(\S+)[ \t]+(\S+)/gm)) {
+    found.set(m[1]!, { track: m[1]!, device: m[2]!, channel: m[3]! });
+  }
+  return [...found.values()].sort((a, b) => a.track.localeCompare(b.track));
+}
+
 /** True when the text carries a line only Y8960 MML has. */
 export function looksLikeY8960Mml(text: string): boolean {
   // The meta command's name ignores case but the track name does not.

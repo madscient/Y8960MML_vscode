@@ -6,6 +6,26 @@ export interface PlayRequest {
   sequence: string;
   adpcm: string | undefined;
   tick: number | undefined;
+  repeat: number | undefined;
+  /** each becomes one --mute */
+  mutes: readonly string[];
+}
+
+export function playerArgs(req: PlayRequest): string[] {
+  const args = [path.basename(req.sequence)];
+  if (req.adpcm !== undefined) {
+    args.push("--adpcm", path.basename(req.adpcm));
+  }
+  if (req.tick !== undefined) {
+    args.push("--tick", String(req.tick));
+  }
+  if (req.repeat !== undefined) {
+    args.push("--repeat", String(req.repeat));
+  }
+  for (const m of req.mutes) {
+    args.push("--mute", m);
+  }
+  return args;
 }
 
 export interface PlayEnd {
@@ -33,13 +53,7 @@ export class Player {
    */
   start(req: PlayRequest, onEnd: (end: PlayEnd) => void): Promise<void> {
     this.stop();
-    const args = [path.basename(req.sequence)];
-    if (req.adpcm !== undefined) {
-      args.push("--adpcm", path.basename(req.adpcm));
-    }
-    if (req.tick !== undefined) {
-      args.push("--tick", String(req.tick));
-    }
+    const args = playerArgs(req);
 
     return new Promise((resolve, reject) => {
       // Run from the outputs' folder with bare names, as y8mmlc is: whether the

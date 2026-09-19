@@ -48,6 +48,11 @@
         "category": "Y8960 MML"
       },
       {
+        "command": "y8960mml.playParts",
+        "title": "パートを選んで再生",
+        "category": "Y8960 MML"
+      },
+      {
         "command": "y8960mml.stop",
         "title": "再生を止める",
         "category": "Y8960 MML"
@@ -61,6 +66,10 @@
         },
         {
           "command": "y8960mml.play",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.playParts",
           "when": "editorLangId == y8960mml"
         }
       ]
@@ -107,6 +116,24 @@
           ],
           "default": null,
           "markdownDescription": "演奏を進める割り込みの周期（`y8960player --tick`）。"
+        },
+        "y8960mml.playerRepeat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 255,
+          "default": null,
+          "markdownDescription": "曲を鳴らす回数（`y8960player --repeat`）。`0` は止めるまで繰り返す。空なら `y8960player` の既定（1回）。"
+        },
+        "y8960mml.playerMute": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "黙らせるもの。1つずつ `y8960player --mute` に渡す。トラック（`A`-`P`、`T0`-`T15`）、チップ（`SCC` など）、チャンネル（`OPL2EX1,9` など）。頭に `!` を付けるとそれ以外を黙らせる。「パートを選んで再生」では使わない。"
         },
         "y8960mml.detectFromContent": {
           "type": "boolean",

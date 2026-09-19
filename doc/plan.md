@@ -36,10 +36,19 @@
 **変える費用：`package.json`・`src/extension.ts`・`README.md` の3か所で、
 公開前なら利用者側に波及しない。**
 
-- コマンド ID：`y8960mml.compile` / `y8960mml.play` / `y8960mml.stop`
+- コマンド ID：`y8960mml.compile` / `y8960mml.play` / `y8960mml.playParts` /
+  `y8960mml.stop`
 - 設定キー：`y8960mml.compilerPath` / `playerPath` / `compileOnSave` / `outDir` /
-  `playerTick` / `detectFromContent`
-- キーバインドは置いていない（F5 はデバッグと取り合う）
+  `playerTick` / `playerRepeat` / `playerMute` / `detectFromContent`
+  （`playerRepeat`・`playerMute`・`playParts` は利用者が提案のまま了承）
+- キーバインドは置いていない（F5 はデバッグと取り合う。止めるコマンドにも、いまは
+  要らないと利用者が決めた）
+
+「パートを選んで再生」は、選んだトラックごとに `--mute !X` を渡す（`!` の指定が
+複数あると、そのどれかに当たるものだけが鳴る）。全部を選んだときは何も渡さない。
+このコマンドでは `playerMute` を使わない ―― 設定の `!` の指定が選んだものをさらに
+狭めてしまうため。選んだトラックは文書ごとに覚え、拡張が動いている間だけ次の選択の
+初期値にする。
 
 ## CLI について確かめた事実
 
@@ -67,9 +76,10 @@
 
 ## 試験
 
-`npm test`。`src/test/` の3本。
+`npm test`。`src/test/` の4本。
 
 - `cli.test.ts`：診断・出力行の解析、桁の換算、中身による判定
+- `play.test.ts`：プレイヤーに渡す引数の組み立て、`#assign` からのトラックの読み取り
 - `compile.test.ts`：実物の `y8mmlc` を走らせる。環境変数 `Y8MMLC` に実行ファイルを
   入れる。無ければ飛ばす
 - `grammar.test.ts`：写した文法を `vscode-textmate` と `vscode-oniguruma`（VS Code が
@@ -147,4 +157,9 @@
   `.bin` と一致した。プレイヤー側の問題として依頼文を渡し、プレイヤーが 0156dfc で
   直した。直った版で書き出すと、`--adpcm` の有無とダンプの中身で WAV が変わり、
   ADPCM の音符ごとに立ち上がって減衰する波形が出た（**確認済み**。WAV を数値で測った）。
-  拡張から鳴らして ADPCM が鳴ることを利用者が耳で確かめた（**確認済み**）
+  拡張から鳴らして ADPCM が鳴ることを利用者が耳で確かめた（**確認済み**）。
+  再生の設定 `playerRepeat`・`playerMute` と「パートを選んで再生」を足した。
+  プレイヤーに渡す引数の意味は、`--wav` で書き出して比べて確かめた（**確認済み**）：
+  `--mute !A --mute !D` は何も黙らせないときとバイト単位で同じ、`--mute !A` は
+  `--mute D` と同じ、`--repeat 2` で 8.51 秒が 16.51 秒になった。一覧から選んで
+  鳴らす操作は、利用者が F5 の窓で確かめた（**確認済み**。利用者の耳）
