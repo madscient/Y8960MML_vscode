@@ -60,6 +60,21 @@
         "command": "y8960mml.stop",
         "title": "再生を止める",
         "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.duplicateTrack",
+        "title": "トラックを複製",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.renameTrack",
+        "title": "トラックを改名",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.deleteTrack",
+        "title": "トラックを削除",
+        "category": "Y8960 MML"
       }
     ],
     "menus": {
@@ -74,6 +89,18 @@
         },
         {
           "command": "y8960mml.playParts",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.duplicateTrack",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.renameTrack",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.deleteTrack",
           "when": "editorLangId == y8960mml"
         }
       ]

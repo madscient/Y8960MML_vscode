@@ -2,9 +2,18 @@ import * as path from "node:path";
 
 import * as vscode from "vscode";
 
-import { assignedTracks, looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
+import { looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
 import { compile } from "./compile.js";
 import { Player, playerArgs } from "./player.js";
+import {
+  deleteTrack,
+  duplicateTrack,
+  renameTrack,
+  trackSummaries,
+  unusedTracks,
+  type Edit,
+  type TrackSummary,
+} from "./track.js";
 
 const LANGUAGE_ID = "y8960mml";
 
@@ -33,6 +42,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("y8960mml.play", () => playCommand()),
     vscode.commands.registerCommand("y8960mml.playParts", () => playPartsCommand()),
     vscode.commands.registerCommand("y8960mml.stop", () => player.stop()),
+    vscode.commands.registerCommand("y8960mml.duplicateTrack", () => duplicateTrackCommand()),
+    vscode.commands.registerCommand("y8960mml.renameTrack", () => renameTrackCommand()),
+    vscode.commands.registerCommand("y8960mml.deleteTrack", () => deleteTrackCommand()),
     vscode.workspace.onDidSaveTextDocument((doc) => onSave(doc)),
     vscode.workspace.onDidOpenTextDocument((doc) => detectLanguage(doc)),
   );
@@ -117,7 +129,7 @@ async function playPartsCommand(): Promise<void> {
   if (doc === undefined) {
     return;
   }
-  const tracks = assignedTracks(doc.getText());
+  const tracks = trackSummaries(doc.getText()).filter((t) => t.device !== undefined);
   if (tracks.length === 0) {
     void vscode.window.showErrorMessage("#assign のあるトラックがありません。");
     return;
@@ -140,6 +152,146 @@ async function playPartsCommand(): Promise<void> {
   // The playerMute setting is left out: its own "!" specs would narrow this.
   const mutes = picked.length === tracks.length ? [] : picked.map((p) => `!${p.label}`);
   await play(doc, mutes);
+}
+
+/**
+ * The track commands only edit the text, so they take the editor as it is:
+ * unlike the compiler, they need neither a saved file nor a named one.
+ */
+function activeEditor(): vscode.TextEditor | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (editor === undefined || editor.document.languageId !== LANGUAGE_ID) {
+    void vscode.window.showErrorMessage("Y8960 MML のファイルを開いてから実行してください。");
+    return undefined;
+  }
+  return editor;
+}
+
+function describe(t: TrackSummary): string {
+  const where = t.device === undefined ? "#assign なし" : `${t.device} ${t.channel}`;
+  return t.lines === 0 ? `${where}・MML の行なし` : `${where}・${t.lines} 行`;
+}
+
+async function pickTrack(tracks: readonly TrackSummary[], title: string): Promise<TrackSummary | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    tracks.map((t) => ({ label: t.track, description: describe(t), track: t })),
+    { title, placeHolder: "トラック" },
+  );
+  return picked?.track;
+}
+
+async function pickFreeTrack(text: string, title: string): Promise<string | undefined> {
+  const free = unusedTracks(text);
+  if (free.length === 0) {
+    void vscode.window.showErrorMessage("空いているトラックがありません。A-P の16本すべてが使われています。");
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(free, { title, placeHolder: "空いているトラック" });
+  return picked;
+}
+
+/**
+ * Applies the edits as one change, so one undo takes the whole command back.
+ * The offsets were taken before the quick picks, so a document that changed
+ * while they were open is left alone.
+ */
+async function applyEdits(editor: vscode.TextEditor, text: string, edits: readonly Edit[]): Promise<boolean> {
+  const doc = editor.document;
+  if (doc.getText() !== text) {
+    void vscode.window.showErrorMessage("ファイルが変わったので、何もしていません。もう一度実行してください。");
+    return false;
+  }
+  return editor.edit((builder) => {
+    for (const edit of edits) {
+      builder.replace(new vscode.Range(doc.positionAt(edit.start), doc.positionAt(edit.end)), edit.text);
+    }
+  });
+}
+
+async function duplicateTrackCommand(): Promise<void> {
+  const editor = activeEditor();
+  if (editor === undefined) {
+    return;
+  }
+  const text = editor.document.getText();
+  const tracks = trackSummaries(text).filter((t) => t.lines > 0);
+  if (tracks.length === 0) {
+    void vscode.window.showErrorMessage("MML の行があるトラックがありません。");
+    return;
+  }
+  const from = await pickTrack(tracks, "複製するトラック");
+  if (from === undefined) {
+    return;
+  }
+  const to = await pickFreeTrack(text, `${from.track} の複製先`);
+  if (to === undefined) {
+    return;
+  }
+  if (await applyEdits(editor, text, duplicateTrack(text, from.track, to))) {
+    void vscode.window.showInformationMessage(
+      `${from.track} の MML を ${to} に複製しました。${to} の #assign を書いてください。`,
+    );
+  }
+}
+
+async function renameTrackCommand(): Promise<void> {
+  const editor = activeEditor();
+  if (editor === undefined) {
+    return;
+  }
+  const text = editor.document.getText();
+  const tracks = trackSummaries(text);
+  if (tracks.length === 0) {
+    void vscode.window.showErrorMessage("トラックがありません。");
+    return;
+  }
+  const from = await pickTrack(tracks, "改名するトラック");
+  if (from === undefined) {
+    return;
+  }
+  const to = await pickFreeTrack(text, `${from.track} の新しい名前`);
+  if (to === undefined) {
+    return;
+  }
+  if (await applyEdits(editor, text, renameTrack(text, from.track, to))) {
+    vscode.window.setStatusBarMessage(`$(check) ${from.track} を ${to} に改名しました`, 5000);
+  }
+}
+
+async function deleteTrackCommand(): Promise<void> {
+  const editor = activeEditor();
+  if (editor === undefined) {
+    return;
+  }
+  const text = editor.document.getText();
+  const tracks = trackSummaries(text);
+  if (tracks.length === 0) {
+    void vscode.window.showErrorMessage("トラックがありません。");
+    return;
+  }
+  const track = await pickTrack(tracks, "削除するトラック");
+  if (track === undefined) {
+    return;
+  }
+  const going: string[] = [];
+  if (track.device !== undefined) {
+    going.push("#assign の1行");
+  }
+  if (track.lines > 0) {
+    going.push(`MML の ${track.lines} 行`);
+  }
+  const DELETE = "削除";
+  const choice = await vscode.window.showWarningMessage(
+    `トラック ${track.track} を消します。`,
+    { modal: true, detail: `${going.join("と")}が消えます。元に戻すには Ctrl+Z。` },
+    DELETE,
+  );
+  if (choice !== DELETE) {
+    return;
+  }
+  if (await applyEdits(editor, text, deleteTrack(text, track.track))) {
+    vscode.window.setStatusBarMessage(`$(check) トラック ${track.track} を消しました`, 5000);
+  }
 }
 
 async function play(doc: vscode.TextDocument, mutes: readonly string[]): Promise<void> {
