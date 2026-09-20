@@ -75,6 +75,26 @@
         "command": "y8960mml.deleteTrack",
         "title": "トラックを削除",
         "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.tie",
+        "title": "選択範囲をタイ・レガートで繋ぐ",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.portamento",
+        "title": "選択範囲をポルタメントで繋ぐ",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.untie",
+        "title": "選択範囲のタイ・レガートを外す",
+        "category": "Y8960 MML"
+      },
+      {
+        "command": "y8960mml.unportamento",
+        "title": "選択範囲のポルタメントを外す",
+        "category": "Y8960 MML"
       }
     ],
     "menus": {
@@ -101,6 +121,22 @@
         },
         {
           "command": "y8960mml.deleteTrack",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.tie",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.portamento",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.untie",
+          "when": "editorLangId == y8960mml"
+        },
+        {
+          "command": "y8960mml.unportamento",
           "when": "editorLangId == y8960mml"
         }
       ]

@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
 import { compile } from "./compile.js";
 import { Player, playerArgs } from "./player.js";
+import { linkNotes, unlinkNotes, type Link, type Range } from "./connect.js";
 import {
   deleteTrack,
   duplicateTrack,
@@ -45,6 +46,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("y8960mml.duplicateTrack", () => duplicateTrackCommand()),
     vscode.commands.registerCommand("y8960mml.renameTrack", () => renameTrackCommand()),
     vscode.commands.registerCommand("y8960mml.deleteTrack", () => deleteTrackCommand()),
+    vscode.commands.registerCommand("y8960mml.tie", () => linkCommand("tie", false)),
+    vscode.commands.registerCommand("y8960mml.portamento", () => linkCommand("porta", false)),
+    vscode.commands.registerCommand("y8960mml.untie", () => linkCommand("tie", true)),
+    vscode.commands.registerCommand("y8960mml.unportamento", () => linkCommand("porta", true)),
     vscode.workspace.onDidSaveTextDocument((doc) => onSave(doc)),
     vscode.workspace.onDidOpenTextDocument((doc) => detectLanguage(doc)),
   );
@@ -291,6 +296,40 @@ async function deleteTrackCommand(): Promise<void> {
   }
   if (await applyEdits(editor, text, deleteTrack(text, track.track))) {
     vscode.window.setStatusBarMessage(`$(check) トラック ${track.track} を消しました`, 5000);
+  }
+}
+
+const LINK_NAMES: Record<Link, string> = { tie: "タイ・レガート", porta: "ポルタメント" };
+
+async function linkCommand(link: Link, undo: boolean): Promise<void> {
+  const editor = activeEditor();
+  if (editor === undefined) {
+    return;
+  }
+  const doc = editor.document;
+  const text = doc.getText();
+  const ranges: Range[] = editor.selections
+    .filter((s) => !s.isEmpty)
+    .map((s) => ({ start: doc.offsetAt(s.start), end: doc.offsetAt(s.end) }));
+  if (ranges.length === 0) {
+    void vscode.window.showErrorMessage("音符を選んでから実行してください。");
+    return;
+  }
+
+  const name = LINK_NAMES[link];
+  const result = undo ? unlinkNotes(text, ranges, link) : linkNotes(text, ranges, link);
+  if (result.rhythm.length > 0) {
+    void vscode.window.showWarningMessage(
+      `リズムのトラック（${result.rhythm.join("・")}）には & と ~ がありません。ほかのトラックだけを見ました。`,
+    );
+  }
+  if (result.edits.length === 0) {
+    vscode.window.setStatusBarMessage(`${name}：${undo ? "外すものがありません" : "繋ぐところがありません"}`, 5000);
+    return;
+  }
+  if (await applyEdits(editor, text, result.edits)) {
+    const what = undo ? "外しました" : "繋ぎました";
+    vscode.window.setStatusBarMessage(`$(check) ${name}：${result.edits.length} か所を${what}`, 5000);
   }
 }
 

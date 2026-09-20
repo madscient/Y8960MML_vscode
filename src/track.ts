@@ -260,3 +260,98 @@ export function deleteTrack(text: string, track: string): Edit[] {
   const lines = [...t.assigns.map((a) => a.line), ...t.lines];
   return lines.map((line) => ({ start: line.start, end: line.next, text: "" })).sort(byStart);
 }
+
+/** A piece of a track's MML and where it came from in the document. */
+export interface ViewPiece {
+  /** where the piece begins in the view's text */
+  at: number;
+  start: number;
+  end: number;
+}
+
+/**
+ * A track's MML as the compiler reads it: the MML of its lines run together.
+ * The compiler puts a '\n' between the lines, which its reader treats as any
+ * other whitespace, so a note on one line and its length on the next still
+ * make one note.
+ */
+export interface TrackView {
+  track: string;
+  channel: string | undefined;
+  text: string;
+  pieces: ViewPiece[];
+}
+
+/** The document spans of a logical line from `from` in its text onwards. */
+function spansFrom(line: LogicalLine, from: number): Array<{ start: number; end: number }> {
+  const out: Array<{ start: number; end: number }> = [];
+  let seen = 0;
+  for (const piece of line.pieces) {
+    const length = piece.end - piece.start;
+    if (seen + length > from) {
+      out.push({ start: piece.start + Math.max(0, from - seen), end: piece.end });
+    }
+    seen += length;
+  }
+  return out;
+}
+
+export function trackViews(source: string): TrackView[] {
+  const tracks = readTracks(source);
+  const out: TrackView[] = [];
+  for (const name of TRACK_NAMES) {
+    const t = tracks.get(name);
+    if (t === undefined) {
+      continue;
+    }
+    const pieces: ViewPiece[] = [];
+    let text = "";
+    for (const line of t.lines) {
+      if (text.length > 0) {
+        text += "\n";
+      }
+      // The track name and the whitespace after it are not part of the MML.
+      let from = 1;
+      while (from < line.text.length && isSpace(line.text[from]!)) {
+        from++;
+      }
+      for (const span of spansFrom(line, from)) {
+        pieces.push({ at: text.length, start: span.start, end: span.end });
+        text += source.slice(span.start, span.end);
+      }
+    }
+    out.push({ track: name, channel: t.channel, text, pieces });
+  }
+  return out;
+}
+
+/** Where an offset in the view's text sits in the document. */
+export function documentOffset(view: TrackView, at: number): number {
+  let last = 0;
+  for (const piece of view.pieces) {
+    const length = piece.end - piece.start;
+    if (at < piece.at + length) {
+      return piece.start + Math.max(0, at - piece.at);
+    }
+    last = piece.end;
+  }
+  return last;
+}
+
+/**
+ * The document spans a range of the view's text covers. A range that a '\'
+ * continuation split comes back as more than one span, so an edit leaves the
+ * backslash and the line break where they are.
+ */
+export function documentSpans(view: TrackView, start: number, end: number): Array<{ start: number; end: number }> {
+  const out: Array<{ start: number; end: number }> = [];
+  for (const piece of view.pieces) {
+    const length = piece.end - piece.start;
+    const from = Math.max(start, piece.at);
+    const to = Math.min(end, piece.at + length);
+    if (from < to) {
+      out.push({ start: piece.start + (from - piece.at), end: piece.start + (to - piece.at) });
+    }
+  }
+  return out;
+}
