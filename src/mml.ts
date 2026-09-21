@@ -43,13 +43,36 @@ export type TokenKind =
   | "macro"
   /** a block or a bracketed mark: what plays next is not what is written next */
   | "branch"
+  /** Ln, which sets the length of the notes that write none */
+  | "setLength"
+  | "tupletStart"
+  | "tupletEnd"
   | "other";
+
+/** The length written after a note, a rest, @W, Ln or a tuplet's '}'. */
+export interface Length {
+  /** the number, when a plain one was written */
+  value: number | undefined;
+  /** the name of the =name; that stands for the number */
+  name: string | undefined;
+  dots: number;
+  /** false when no number was written, so the default length applies */
+  written: boolean;
+}
 
 export interface Token {
   kind: TokenKind;
   /** offsets in the text handed to `tokens` */
   start: number;
   end: number;
+  /** what this one wrote for its length, when it takes one */
+  length?: Length;
+}
+
+/** What a place where a number may stand held, or undefined when none did. */
+interface Written {
+  value: number | undefined;
+  name: string | undefined;
 }
 
 const SPACE = " \t\n\r";
@@ -93,51 +116,70 @@ class Scanner {
     return true;
   }
 
-  digits(): boolean {
-    let any = false;
-    while (this.peek() !== undefined && this.peek()! >= "0" && this.peek()! <= "9") {
+  private digits(): number | undefined {
+    let value: number | undefined;
+    for (;;) {
+      const c = this.peek();
+      if (c === undefined || c < "0" || c > "9") {
+        return value;
+      }
       this.take();
-      any = true;
+      value = (value ?? 0) * 10 + Number(c);
     }
-    return any;
   }
 
   /** A number where one may stand: decimal, $ and two hex digits, or =name;. */
-  number(): boolean {
+  number(): Written | undefined {
     const c = this.peek();
     if (c === "$") {
       this.take();
       // Two digits and no more: a-f is a note letter as well as a hex digit.
+      let value = 0;
       for (let i = 0; i < 2; i++) {
         const d = this.peek();
         if (d === undefined || !/[0-9a-f]/.test(d)) {
-          return true;
+          return { value, name: undefined };
         }
         this.take();
+        value = value * 16 + parseInt(d, 16);
       }
-      return true;
+      return { value, name: undefined };
     }
     if (c === "=") {
       this.take();
+      const from = this.taken;
       this.until(";");
-      return true;
+      // Whitespace is skipped inside a name as it is anywhere else.
+      const name = [...this.slice(from, this.taken)]
+        .filter((ch) => !SPACE.includes(ch) && ch !== ";")
+        .join("");
+      return { value: undefined, name };
     }
-    return this.digits();
+    const value = this.digits();
+    return value === undefined ? undefined : { value, name: undefined };
   }
 
-  signed(): boolean {
-    if (this.peek() === "-" || this.peek() === "+") {
+  signed(): Written | undefined {
+    const negative = this.peek() === "-";
+    if (negative || this.peek() === "+") {
       this.take();
     }
-    return this.number();
+    const n = this.number();
+    return n !== undefined && negative && n.value !== undefined ? { ...n, value: -n.value } : n;
   }
 
   /** A length: a number where one is written, then its dots. */
-  length(): void {
-    this.number();
+  length(): Length {
+    const n = this.number();
+    let dots = 0;
     while (this.eat(".")) {
-      // every dot belongs to the length
+      dots++;
     }
+    return { value: n?.value, name: n?.name, dots, written: n !== undefined };
+  }
+
+  slice(from: number, to: number): string {
+    return this.text.slice(from, to);
   }
 
   /** Takes everything up to and including `end`, or to the text's end. */
@@ -152,79 +194,81 @@ class Scanner {
 const NOTE_LETTERS = "abcdefg";
 const RHYTHM_LETTERS = "bsmch";
 
+/** What one command came to: its kind, and the length it wrote if it takes one. */
+interface Parsed {
+  kind: TokenKind;
+  length?: Length;
+}
+
 /** The commands both dialects share, which come before the dialect is looked at. */
-function shared(s: Scanner, c: string): TokenKind | undefined {
+function shared(s: Scanner, c: string): Parsed | undefined {
   switch (c) {
     case "|":
       s.eat(":");
-      return "other";
+      return { kind: "other" };
     case ":":
       s.eat("|");
       s.number();
-      return "other";
+      return { kind: "other" };
     case "[":
       s.number();
-      return "branch";
+      return { kind: "branch" };
     case "]":
-      return "branch";
+      return { kind: "branch" };
     case "(":
       // (*), (DS), (TC), (CODA), (FINE) and (DC), each with a number of its own.
       s.until(")");
       s.number();
-      return "branch";
+      return { kind: "branch" };
     default:
       return undefined;
   }
 }
 
-function melody(s: Scanner, c: string): TokenKind {
+function melody(s: Scanner, c: string): Parsed {
   if (NOTE_LETTERS.includes(c)) {
     if (s.peek() === "+" || s.peek() === "#" || s.peek() === "-") {
       s.take();
     }
-    s.length();
-    return "note";
+    return { kind: "note", length: s.length() };
   }
   switch (c) {
     case "n":
       s.number();
-      s.length();
-      return "note";
+      return { kind: "note", length: s.length() };
     case "r":
-      s.length();
-      return "rest";
+      return { kind: "rest", length: s.length() };
     case "&":
-      return "tie";
+      return { kind: "tie" };
     case "~":
       // The cents are there only when something that starts a number follows.
       s.signed();
-      return "porta";
+      return { kind: "porta" };
     case "x":
       s.until(";");
-      return "macro";
+      return { kind: "macro" };
     case "@": {
       const d = s.peek();
       if (d === "w") {
         s.take();
-        s.length();
-        return "wait";
+        return { kind: "wait", length: s.length() };
       }
       if (d === "v") {
         s.take();
         s.number();
-        return "other";
+        return { kind: "other" };
       }
       if (d === "p") {
         s.take();
         s.signed();
-        return "other";
+        return { kind: "other" };
       }
       s.number();
-      return "other";
+      return { kind: "other" };
     }
     case "p":
       s.signed();
-      return "other";
+      return { kind: "other" };
     case "y":
       s.number();
       if (s.eat(",")) {
@@ -233,11 +277,10 @@ function melody(s: Scanner, c: string): TokenKind {
           s.number();
         }
       }
-      return "other";
+      return { kind: "other" };
     case "l":
       // Ln takes dots of its own; the others take a plain number.
-      s.length();
-      return "other";
+      return { kind: "setLength", length: s.length() };
     case "o":
     case "v":
     case "t":
@@ -246,17 +289,18 @@ function melody(s: Scanner, c: string): TokenKind {
     case "m":
     case "i":
       s.number();
-      return "other";
+      return { kind: "other" };
+    case "{":
+      return { kind: "tupletStart" };
     case "}":
-      s.length();
-      return "other";
+      return { kind: "tupletEnd", length: s.length() };
     default:
-      // '>', '<', '{' and anything that is not a command at all.
-      return "other";
+      // The octave steps and anything that is not a command at all.
+      return { kind: "other" };
   }
 }
 
-function rhythm(s: Scanner, c: string): TokenKind {
+function rhythm(s: Scanner, c: string): Parsed {
   if (RHYTHM_LETTERS.includes(c)) {
     // A run of instruments, each able to carry '!', and one length for them all.
     for (;;) {
@@ -267,23 +311,21 @@ function rhythm(s: Scanner, c: string): TokenKind {
       }
       s.take();
     }
-    s.length();
-    return "note";
+    return { kind: "note", length: s.length() };
   }
   switch (c) {
     case "r":
-      s.length();
-      return "rest";
+      return { kind: "rest", length: s.length() };
     case "x":
       s.until(";");
-      return "macro";
+      return { kind: "macro" };
     case "@":
       // @V and @A, both with a number.
       if (s.peek() === "v" || s.peek() === "a") {
         s.take();
       }
       s.number();
-      return "other";
+      return { kind: "other" };
     case "y":
       s.number();
       if (s.eat(",")) {
@@ -292,13 +334,13 @@ function rhythm(s: Scanner, c: string): TokenKind {
           s.number();
         }
       }
-      return "other";
+      return { kind: "other" };
     case "t":
     case "v":
       s.number();
-      return "other";
+      return { kind: "other" };
     default:
-      return "other";
+      return { kind: "other" };
   }
 }
 
@@ -311,7 +353,7 @@ export function tokens(text: string, dialect: Dialect): Token[] {
     if (c === undefined) {
       return out;
     }
-    const kind = shared(s, c) ?? (dialect === "rhythm" ? rhythm(s, c) : melody(s, c));
-    out.push({ kind, start, end: s.taken });
+    const parsed = shared(s, c) ?? (dialect === "rhythm" ? rhythm(s, c) : melody(s, c));
+    out.push({ kind: parsed.kind, start, end: s.taken, ...(parsed.length && { length: parsed.length }) });
   }
 }

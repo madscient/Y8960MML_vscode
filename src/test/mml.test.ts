@@ -22,7 +22,7 @@ test("the dialect comes from the channel", () => {
 test("notes take their accidental, length and dots", () => {
   assert.deepEqual(split("O4 L8 c+4. d-16 e"), [
     "other:O4",
-    "other:L8",
+    "setLength:L8",
     "note:c+4.",
     "note:d-16",
     "note:e",
@@ -31,7 +31,7 @@ test("notes take their accidental, length and dots", () => {
 
 test("whitespace inside a command belongs to it", () => {
   // y8mmlc skips whitespace everywhere, so "L 1 6" is L16 and "C 4" is a quarter note.
-  assert.deepEqual(split("L 1 6 C 4"), ["other:L 1 6", "note:C 4"]);
+  assert.deepEqual(split("L 1 6 C 4"), ["setLength:L 1 6", "note:C 4"]);
 });
 
 test("$ takes two digits, so the note after it is not swallowed", () => {
@@ -90,7 +90,28 @@ test("N and R carry a length like a note", () => {
 });
 
 test("tuplets", () => {
-  assert.deepEqual(split("{cde}4."), ["other:{", "note:c", "note:d", "note:e", "other:}4."]);
+  assert.deepEqual(split("{cde}4."), [
+    "tupletStart:{",
+    "note:c",
+    "note:d",
+    "note:e",
+    "tupletEnd:}4.",
+  ]);
+});
+
+test("a length comes back with the token that wrote it", () => {
+  const [note, rest, other, set] = tokens("c4. r r8 L16", "melody");
+  assert.deepEqual(note!.length, { value: 4, name: undefined, dots: 1, written: true });
+  assert.deepEqual(rest!.length, { value: undefined, name: undefined, dots: 0, written: false });
+  assert.deepEqual(other!.length, { value: 8, name: undefined, dots: 0, written: true });
+  assert.deepEqual(set!.length, { value: 16, name: undefined, dots: 0, written: true });
+  assert.deepEqual(tokens("c=LEN;", "melody")[0]!.length, {
+    value: undefined,
+    name: "LEN",
+    dots: 0,
+    written: true,
+  });
+  assert.deepEqual(tokens("c$10", "melody")[0]!.length, { value: 16, name: undefined, dots: 0, written: true });
 });
 
 test("a rhythm track has instruments, and no tie or portamento", () => {
