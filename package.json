@@ -2,7 +2,7 @@
   "name": "y8960mml-helper",
   "displayName": "Y8960 MML Helper",
   "description": "Y8960 カートリッジの MML を書くための拡張。y8mmlc でコンパイルし、y8960player で鳴らす",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "madscient",
   "license": "MIT",
   "repository": {
