@@ -275,11 +275,21 @@ export interface ViewPiece {
  * other whitespace, so a note on one line and its length on the next still
  * make one note.
  */
+/** Where one track line sits in the view, and where that line ends in the document. */
+export interface ViewLine {
+  /** the line's MML in the view's text */
+  from: number;
+  to: number;
+  /** the end of the line in the document, past its last character */
+  at: number;
+}
+
 export interface TrackView {
   track: string;
   channel: string | undefined;
   text: string;
   pieces: ViewPiece[];
+  lines: ViewLine[];
 }
 
 /** The document spans of a logical line from `from` in its text onwards. */
@@ -305,22 +315,25 @@ export function trackViews(source: string): TrackView[] {
       continue;
     }
     const pieces: ViewPiece[] = [];
+    const lines: ViewLine[] = [];
     let text = "";
     for (const line of t.lines) {
       if (text.length > 0) {
         text += "\n";
       }
+      const from = text.length;
       // The track name and the whitespace after it are not part of the MML.
-      let from = 1;
-      while (from < line.text.length && isSpace(line.text[from]!)) {
-        from++;
+      let mml = 1;
+      while (mml < line.text.length && isSpace(line.text[mml]!)) {
+        mml++;
       }
-      for (const span of spansFrom(line, from)) {
+      for (const span of spansFrom(line, mml)) {
         pieces.push({ at: text.length, start: span.start, end: span.end });
         text += source.slice(span.start, span.end);
       }
+      lines.push({ from, to: text.length, at: line.rawEnd });
     }
-    out.push({ track: name, channel: t.channel, text, pieces });
+    out.push({ track: name, channel: t.channel, text, pieces, lines });
   }
   return out;
 }
@@ -354,4 +367,46 @@ export function documentSpans(view: TrackView, start: number, end: number): Arra
     }
   }
   return out;
+}
+
+/** What the #define lines named: a number, or a piece of MML. */
+export interface Defines {
+  numbers: Map<string, number>;
+  strings: Map<string, string>;
+}
+
+function isMacroName(name: string): boolean {
+  return /^[A-Za-z][0-9A-Za-z_]*$/.test(name);
+}
+
+/**
+ * The names the source defines. The first definition of a name wins, as it
+ * does in the compiler, where a second one is an error.
+ */
+export function defines(source: string): Defines {
+  const numbers = new Map<string, number>();
+  const strings = new Map<string, string>();
+  for (const line of logicalLines(source)) {
+    if (line.text[0] !== "#") {
+      continue;
+    }
+    const w = words(line.text, 1);
+    if (w.length < 3 || w[0]!.text.toLowerCase() !== "define") {
+      continue;
+    }
+    const name = w[1]!.text;
+    if (!isMacroName(name) || numbers.has(name) || strings.has(name)) {
+      continue;
+    }
+    // A "..." value runs to the last quote on the line; anything else is a number.
+    const rest = line.text.slice(w[1]!.offset + name.length);
+    const open = rest.indexOf('"');
+    const close = rest.lastIndexOf('"');
+    if (open >= 0 && close > open && rest.slice(0, open).trim() === "") {
+      strings.set(name, rest.slice(open + 1, close));
+    } else if (w.length === 3 && /^[-+]?[0-9]+$/.test(w[2]!.text)) {
+      numbers.set(name, Number(w[2]!.text));
+    }
+  }
+  return { numbers, strings };
 }
