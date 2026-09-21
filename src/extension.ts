@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { looksLikeY8960Mml, utf8ColumnToUtf16, type CompilerDiagnostic } from "./cli.js";
 import { compile } from "./compile.js";
 import { Player, playerArgs } from "./player.js";
+import { lineTicks, TICKS_QUARTER } from "./beats.js";
 import { linkNotes, unlinkNotes, type Link, type Range } from "./connect.js";
 import {
   deleteTrack,
@@ -22,6 +23,8 @@ let output: vscode.OutputChannel;
 let diagnostics: vscode.DiagnosticCollection;
 let player: Player;
 let playingItem: vscode.StatusBarItem;
+/** Fired when the setting turns the beat hints on or off. */
+let hintsChanged: vscode.EventEmitter<void>;
 /** Documents a command is saving itself, so compile-on-save does not run twice. */
 const savingForCommand = new Set<string>();
 
@@ -33,6 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
   playingItem.text = "$(debug-stop) Y8960 再生中";
   playingItem.tooltip = "クリックで再生を止める";
   playingItem.command = "y8960mml.stop";
+  hintsChanged = new vscode.EventEmitter<void>();
 
   context.subscriptions.push(
     output,
@@ -50,6 +54,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("y8960mml.portamento", () => linkCommand("porta", false)),
     vscode.commands.registerCommand("y8960mml.untie", () => linkCommand("tie", true)),
     vscode.commands.registerCommand("y8960mml.unportamento", () => linkCommand("porta", true)),
+    hintsChanged,
+    vscode.languages.registerInlayHintsProvider({ language: LANGUAGE_ID }, beatHints),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("y8960mml.beatHints")) {
+        hintsChanged.fire();
+      }
+    }),
     vscode.workspace.onDidSaveTextDocument((doc) => onSave(doc)),
     vscode.workspace.onDidOpenTextDocument((doc) => detectLanguage(doc)),
   );
@@ -298,6 +309,36 @@ async function deleteTrackCommand(): Promise<void> {
     vscode.window.setStatusBarMessage(`$(check) トラック ${track.track} を消しました`, 5000);
   }
 }
+
+/** Beats to read, with only the places a quarter note does not divide evenly. */
+function beats(ticks: number): string {
+  return `${Math.round((ticks / TICKS_QUARTER) * 10000) / 10000} 拍`;
+}
+
+const beatHints: vscode.InlayHintsProvider = {
+  get onDidChangeInlayHints() {
+    return hintsChanged.event;
+  },
+  provideInlayHints(doc, range) {
+    if (!config().get<boolean>("beatHints", true)) {
+      return [];
+    }
+    const out: vscode.InlayHint[] = [];
+    for (const line of lineTicks(doc.getText())) {
+      if (line.ticks <= 0) {
+        continue;
+      }
+      const at = doc.positionAt(line.at);
+      if (!range.contains(at)) {
+        continue;
+      }
+      const hint = new vscode.InlayHint(at, beats(line.ticks));
+      hint.paddingLeft = true;
+      out.push(hint);
+    }
+    return out;
+  },
+};
 
 const LINK_NAMES: Record<Link, string> = { tie: "タイ・レガート", porta: "ポルタメント" };
 

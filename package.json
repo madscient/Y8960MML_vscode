@@ -202,6 +202,11 @@
           "default": [],
           "markdownDescription": "黙らせるもの。1つずつ `y8960player --mute` に渡す。トラック（`A`-`P`、`T0`-`T15`）、チップ（`SCC` など）、チャンネル（`OPL2EX1,9` など）。頭に `!` を付けるとそれ以外を黙らせる。「パートを選んで再生」では使わない。"
         },
+        "y8960mml.beatHints": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "トラック行の末尾に、その行に書かれた音価の合計を四分音符換算の拍で出す。繰り返しは掛けない。"
+        },
         "y8960mml.detectFromContent": {
           "type": "boolean",
           "default": true,
