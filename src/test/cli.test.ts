@@ -43,10 +43,10 @@ test("written files keep only the file name", () => {
 });
 
 test("UTF-8 byte column to UTF-16 offset", () => {
-  // y8mmlc put 'zz' of this line at column 19.
-  const line = '#voice 128 "あ", zz';
-  assert.equal(line.indexOf("zz"), 16);
-  assert.equal(utf8ColumnToUtf16(line, 19), 16);
+  // y8mmlc put 'zz' of this line at column 24.
+  const line = '#voice OPL @128 "あ", zz';
+  assert.equal(line.indexOf("zz"), 21);
+  assert.equal(utf8ColumnToUtf16(line, 24), 21);
   assert.equal(utf8ColumnToUtf16("abc", 1), 0);
   assert.equal(utf8ColumnToUtf16("abc", 4), 3);
   assert.equal(utf8ColumnToUtf16("abc", 99), 3);
@@ -57,7 +57,7 @@ test("UTF-8 byte column to UTF-16 offset", () => {
 });
 
 test("content detection", () => {
-  assert.ok(looksLikeY8960Mml("; demo\n\n#assign A OPL2EX1 0\n"));
+  assert.ok(looksLikeY8960Mml("; demo\n\n#assign A OPL2EX 0\n"));
   assert.ok(looksLikeY8960Mml("#ASSIGN P SCC 4\n"));
   assert.ok(!looksLikeY8960Mml("#assign a SCC 0\n"));
   assert.ok(!looksLikeY8960Mml("#title \"x\"\ncdefg\n"));

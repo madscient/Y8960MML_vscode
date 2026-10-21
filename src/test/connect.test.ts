@@ -78,17 +78,17 @@ test("two tracks are two chains", () => {
 });
 
 test("a rhythm track is named back, and nothing is written into it", () => {
-  const text = "#assign D OPL2EX1 10\nD BSH8 H8\n";
+  const text = "#assign D OPL2EX 10\nD BSH8 H8\n";
   const result = linkNotes(text, all(text), "tie");
   assert.deepEqual(result.rhythm, ["D"]);
   assert.deepEqual(result.edits, []);
 });
 
 test("an ADPCM track is joined like a melody one", () => {
-  const text = "#assign D OPL2EX1 9\nD @0 c8 d8\n";
+  const text = "#assign D OPL2EX 9\nD @0 c8 d8\n";
   const result = linkNotes(text, all(text), "tie");
   assert.deepEqual(result.rhythm, []);
-  assert.equal(apply(text, result.edits), "#assign D OPL2EX1 9\nD @0 c8 &d8\n");
+  assert.equal(apply(text, result.edits), "#assign D OPL2EX 9\nD @0 c8 &d8\n");
 });
 
 test("taking a kind away leaves the other one", () => {

@@ -26,7 +26,7 @@ async function open(file: string): Promise<vscode.TextDocument> {
 
 async function languageAndCompile(dir: string): Promise<void> {
   const bad = path.join(dir, "bad.mml");
-  fs.writeFileSync(bad, '#voice 128 "あ", zz\n');
+  fs.writeFileSync(bad, '#voice OPL @128 "あ", zz\n');
   const doc = await open(bad);
   assert.equal(doc.languageId, "y8960mml");
 
@@ -39,10 +39,10 @@ async function languageAndCompile(dir: string): Promise<void> {
   const d = diags[0]!;
   assert.equal(d.severity, vscode.DiagnosticSeverity.Error);
   assert.equal(d.source, "y8mmlc");
-  // 'zz' is at UTF-8 byte column 19, which is UTF-16 offset 16.
+  // 'zz' is at UTF-8 byte column 24, which is UTF-16 offset 21.
   assert.deepEqual(
     [d.range.start.line, d.range.start.character, d.range.end.character],
-    [0, 16, 18],
+    [0, 21, 23],
   );
 }
 

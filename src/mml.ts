@@ -253,7 +253,8 @@ function melody(s: Scanner, c: string): Parsed {
         s.take();
         return { kind: "wait", length: s.length() };
       }
-      if (d === "v") {
+      // @E and @G as well: their letters are note letters, so they are taken here.
+      if (d === "v" || d === "e" || d === "g") {
         s.take();
         s.number();
         return { kind: "other" };
@@ -319,13 +320,20 @@ function rhythm(s: Scanner, c: string): Parsed {
     case "x":
       s.until(";");
       return { kind: "macro" };
-    case "@":
-      // @V and @A, both with a number.
-      if (s.peek() === "v" || s.peek() === "a") {
+    case "@": {
+      const d = s.peek();
+      if (d === "w") {
+        s.take();
+        return { kind: "wait", length: s.length() };
+      }
+      // @B, @S, @M, @C and @H set one instrument's level; their letters are
+      // instrument letters, so they are taken here.
+      if (d !== undefined && ("vaeg".includes(d) || RHYTHM_LETTERS.includes(d))) {
         s.take();
       }
       s.number();
       return { kind: "other" };
+    }
     case "y":
       s.number();
       if (s.eat(",")) {
@@ -337,6 +345,7 @@ function rhythm(s: Scanner, c: string): Parsed {
       return { kind: "other" };
     case "t":
     case "v":
+    case "i":
       s.number();
       return { kind: "other" };
     default:

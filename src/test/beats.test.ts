@@ -63,11 +63,20 @@ test("X name; is expanded and counted", () => {
 });
 
 test("a rhythm track counts its instrument runs", () => {
-  assert.deepEqual(ticks("#assign D OPL2EX1 10\nD BSH8 H8 S!H8 H8\n"), [96]);
+  assert.deepEqual(ticks("#assign D OPL2EX 10\nD BSH8 H8 S!H8 H8\n"), [96]);
   // A rhythm track has no L; a run with no length is a quarter note. Whitespace
   // does not end a run, so "B S H" is one hit of three instruments, not three.
-  assert.deepEqual(ticks("#assign D OPL2EX1 10\nD B S H\n"), [48]);
-  assert.deepEqual(ticks("#assign D OPL2EX1 10\nD B4 S4 H4\n"), [144]);
+  assert.deepEqual(ticks("#assign D OPL2EX 10\nD B S H\n"), [48]);
+  assert.deepEqual(ticks("#assign D OPL2EX 10\nD B4 S4 H4\n"), [144]);
+});
+
+test("the commands whose letters are note or instrument letters take no time", () => {
+  assert.deepEqual(ticks(HEAD + "A @E1 c4 @G1 d4\n"), [96]);
+  assert.deepEqual(ticks("#assign D OPL2EX 10\nD @B5 @S5 @M5 @C5 @H5 @E1 @G1 BSH8\n"), [24]);
+});
+
+test("@W takes time on a rhythm track too", () => {
+  assert.deepEqual(ticks("#assign D OPL2EX 10\nD BSH8 @W8 H8\n"), [72]);
 });
 
 test("a line whose length cannot be told has no total, nor has any line after it", () => {
@@ -105,7 +114,7 @@ function sequenceTicks(file: string): number {
     const body = at + 3;
     at = body + size;
     if (kind !== 0x00) {
-      continue; // a voice, a wave or a voice file, not a track
+      continue; // a voice, an envelope or the like, not a track
     }
     let i = body + 3; // the track, the device and the channel
     while (i < body + size) {
@@ -113,8 +122,12 @@ function sequenceTicks(file: string): number {
       if (op === 0xff) {
         break;
       }
-      if (op <= 0x0c || op === 0x0e) {
-        // a note, a rest or a wait, each with a length of one or two bytes
+      if (op <= 0x0c || op === 0x0e || op === 0x0f || op === 0x10 || op === 0xc8) {
+        // a note, a rest, a wait or a rhythm strike, each with a length of one
+        // or two bytes; a strike has its instruments before the length
+        if (op === 0xc8) {
+          i++;
+        }
         const first = bytes[i++]!;
         total += first < 0x80 ? first : ((first & 0x7f) << 8) | bytes[i++]!;
         continue;
@@ -124,6 +137,10 @@ function sequenceTicks(file: string): number {
       }
       if (op >= 0x80 && op <= 0xbf) {
         i++; // one byte follows
+        continue;
+      }
+      if (op === 0xd8) {
+        i += 2; // one rhythm instrument's level: the instrument and the level
         continue;
       }
       assert.fail(`the test does not know the event ${op.toString(16)}; keep the sources plain`);
@@ -139,6 +156,11 @@ const CASES: Record<string, string> = {
   names: '#define LEN 8\n#define RIFF "cde"\nA L=LEN; XRIFF; c=LEN; r16 XRIFF;\n',
   // A note of length 0 takes no time, so something that does has to follow it.
   odd: "A c7 c96 c1 c0 @W4 c3\n",
+  // c- and b+ are events of their own, and @G is dropped off the SCC.
+  envelope: "#env MUSICA @E1 16,20,8,10\n#assign A SSGS 0\nA @E1 @V100 c4 @G1 c-8 b+8 @E0 d4\n",
+  scc: "#env MUSICA @E1 16,20,8,10\n#assign A SCC 0\nA @G1 @E1 c4 d8\n",
+  rhythm: "#assign D OPLLEX 10\nD @B5 @V100 BSH8 @W8 H8 I128 S!H4 @E1 @G1 r8\n",
+  opm: "#assign A OPM 0\nA c4 d8 @E1 @G1 e8\n",
 };
 
 test("the ticks counted here are the ticks the compiler wrote", { skip }, async () => {

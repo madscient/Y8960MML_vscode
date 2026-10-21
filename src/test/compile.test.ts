@@ -10,7 +10,7 @@ import { compile } from "../compile.js";
 const compilerPath = process.env.Y8MMLC;
 const skip = compilerPath === undefined ? "Y8MMLC is not set" : false;
 
-const DEMO = `#assign A OPL2EX1 0
+const DEMO = `#assign A OPL2EX 0
 A  T132 @0 V13 L8 O4 cdefgab>c
 `;
 
@@ -35,7 +35,7 @@ test("a clean source writes the sequence", { skip }, async () => {
 test("an error comes back with its line and byte column", { skip }, async () => {
   const dir = tempDir("bad");
   const source = path.join(dir, "bad.mml");
-  fs.writeFileSync(source, '#voice 128 "あ", zz\n');
+  fs.writeFileSync(source, '#voice OPL @128 "あ", zz\n');
   const r = await compile({ compilerPath: compilerPath!, source, outDir: dir });
   assert.equal(r.kind, "ran");
   if (r.kind !== "ran") return;
@@ -43,7 +43,7 @@ test("an error comes back with its line and byte column", { skip }, async () => 
   assert.deepEqual(r.written, []);
   assert.equal(r.diagnostics.length, 1);
   assert.equal(r.diagnostics[0]!.line, 1);
-  assert.equal(r.diagnostics[0]!.column, 19);
+  assert.equal(r.diagnostics[0]!.column, 24);
 });
 
 test("a folder outside the ANSI code page still compiles", { skip }, async () => {

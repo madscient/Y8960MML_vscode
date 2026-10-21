@@ -48,19 +48,21 @@ test("the line kinds", async () => {
   const g = await loadGrammar();
   const lines = tokenize(g, [
     "; a comment",
-    "#assign A OPL2EX1 0",
+    "#assign A OPL2EX 0",
     "#bogus 1",
     "A  T=TEMPO; @128 V13 L8 |: cdefg :|2",
     "junk",
+    "#assign B OPM 0",
   ].join("\n"));
   assert.equal(lines[0]![0]![1], "comment.line.semicolon.y8960mml");
   assert.equal(scopeOf(lines, 1, "assign"), "keyword.control.directive.y8960mml");
-  assert.equal(scopeOf(lines, 1, "OPL2EX1"), "support.constant.device.y8960mml");
+  assert.equal(scopeOf(lines, 1, "OPL2EX"), "support.constant.device.y8960mml");
   assert.equal(scopeOf(lines, 2, "bogus"), "invalid.illegal.directive.y8960mml");
   assert.equal(scopeOf(lines, 3, "A"), "entity.name.section.track.y8960mml");
   assert.equal(scopeOf(lines, 3, "TEMPO"), "variable.other.macro.y8960mml");
   assert.equal(scopeOf(lines, 3, "|:"), "keyword.control.flow.y8960mml");
   assert.equal(lines[4]![0]![1], "invalid.illegal.line.y8960mml");
+  assert.equal(scopeOf(lines, 5, "OPM"), "support.constant.device.y8960mml");
 });
 
 test("a trailing backslash carries the line kind over", async () => {

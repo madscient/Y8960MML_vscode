@@ -13,7 +13,7 @@ function apply(text: string, edits: readonly Edit[]): string {
 
 const SONG = [
   "; demo",
-  "#assign A OPL2EX1 0",
+  "#assign A OPL2EX 0",
   "#assign B \\",
   "        SCC 0",
   "#define RIFF \"cde\"",
@@ -27,7 +27,7 @@ const SONG = [
 
 test("the tracks a source names, in track order", () => {
   assert.deepEqual(trackSummaries(SONG), [
-    { track: "A", device: "OPL2EX1", channel: "0", lines: 2 },
+    { track: "A", device: "OPL2EX", channel: "0", lines: 2 },
     { track: "B", device: "SCC", channel: "0", lines: 1 },
   ]);
 });
@@ -65,7 +65,7 @@ test("renaming touches the #assign and every track line", () => {
     apply(SONG, renameTrack(SONG, "A", "C")),
     [
       "; demo",
-      "#assign C OPL2EX1 0",
+      "#assign C OPL2EX 0",
       "#assign B \\",
       "        SCC 0",
       "#define RIFF \"cde\"",
@@ -89,7 +89,7 @@ test("duplicating copies the MML lines, not the #assign", () => {
     apply(SONG, duplicateTrack(SONG, "A", "C")),
     [
       "; demo",
-      "#assign A OPL2EX1 0",
+      "#assign A OPL2EX 0",
       "#assign B \\",
       "        SCC 0",
       "#define RIFF \"cde\"",

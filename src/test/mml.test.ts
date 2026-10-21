@@ -53,6 +53,8 @@ test("the @ commands", () => {
     "other:@P-50",
     "wait:@W8.",
   ]);
+  // The letters after @ here are note letters, and none of them is a note.
+  assert.deepEqual(split("@E5 @G1 c"), ["other:@E5", "other:@G1", "note:c"]);
 });
 
 test("ties and portamentos", () => {
@@ -123,6 +125,23 @@ test("a rhythm track has instruments, and no tie or portamento", () => {
   ]);
   // '&' is not a rhythm command; it is read as one character and passed over.
   assert.deepEqual(split("B8&H8", "rhythm"), ["note:B8", "other:&", "note:H8"]);
+});
+
+test("the @ commands of a rhythm track", () => {
+  // @B to @H are instrument letters, and none of them strikes one.
+  assert.deepEqual(split("@B5 @S5 @M5 @C5 @H5 @V100 @E1 @G1 I128 B8", "rhythm"), [
+    "other:@B5",
+    "other:@S5",
+    "other:@M5",
+    "other:@C5",
+    "other:@H5",
+    "other:@V100",
+    "other:@E1",
+    "other:@G1",
+    "other:I128",
+    "note:B8",
+  ]);
+  assert.deepEqual(split("@W8. B", "rhythm"), ["wait:@W8.", "note:B"]);
 });
 
 test("an ADPCM track reads like a melody one", () => {

@@ -19,7 +19,7 @@ test("player arguments: only what is given", () => {
 
 test("player arguments: every option, mutes one by one", () => {
   assert.deepEqual(
-    playerArgs({ ...base, adpcm: path.join("x", "SONG.PC"), tick: 0, repeat: 0, mutes: ["!A", "OPL2EX1,9"] }),
-    ["SONG.SQ", "--adpcm", "SONG.PC", "--tick", "0", "--repeat", "0", "--mute", "!A", "--mute", "OPL2EX1,9"],
+    playerArgs({ ...base, adpcm: path.join("x", "SONG.PC"), tick: 0, repeat: 0, mutes: ["!A", "OPL2EX,9"] }),
+    ["SONG.SQ", "--adpcm", "SONG.PC", "--tick", "0", "--repeat", "0", "--mute", "!A", "--mute", "OPL2EX,9"],
   );
 });
