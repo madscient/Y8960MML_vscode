@@ -7,3 +7,4 @@ out/test/**
 out/e2e/**
 tsconfig.json
 .gitignore
+.claude/**
